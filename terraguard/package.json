@@ -1,0 +1,14 @@
+{
+  "name": "terraguard-ai",
+  "version": "1.0.0",
+  "private": true,
+  "description": "TerraGuard AI landslide risk monitoring platform",
+  "scripts": {
+    "install:all": "npm --prefix backend ci && npm --prefix frontend ci",
+    "start:backend": "npm --prefix backend start",
+    "dev:backend": "npm --prefix backend run dev",
+    "start:frontend": "npm --prefix frontend start",
+    "build:frontend": "npm --prefix frontend run build",
+    "verify": "node verify.js"
+  }
+}
