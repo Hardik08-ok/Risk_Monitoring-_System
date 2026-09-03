@@ -45,11 +45,29 @@ export default function RiskMap({ riskData, reports, onRegionClick }) {
       zoomControl: true,
     });
 
-    // Dark tile layer
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-      maxZoom: 18,
-    }).addTo(mapRef.current);
+    const apiKey = process.env.REACT_APP_MAPTILER_KEY;
+
+    if (apiKey) {
+      // MapTiler basemap – Streets Dark style, all labels forced to English
+      import('@maptiler/leaflet-maptilersdk').then(({ MaptilerLayer, MapStyle, Language }) => {
+        new MaptilerLayer({
+          apiKey,
+          style: MapStyle.STREETS.DARK,
+          language: Language.ENGLISH,
+        }).addTo(mapRef.current);
+      });
+    } else {
+      // Fallback: OpenStreetMap when the API key is not configured
+      console.warn(
+        '[TerraGuard] REACT_APP_MAPTILER_KEY is not set. ' +
+        'Falling back to OpenStreetMap tiles.'
+      );
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution:
+          '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        maxZoom: 18,
+      }).addTo(mapRef.current);
+    }
 
     // NER boundary box (approximate)
     L.rectangle([[21, 88], [29.5, 97.5]], {
