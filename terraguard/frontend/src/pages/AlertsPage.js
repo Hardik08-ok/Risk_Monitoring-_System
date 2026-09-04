@@ -5,34 +5,31 @@ import { dispatchAction } from '../utils/api';
 
 export default function AlertsPage({ liveData }) {
   const { alerts, refresh } = liveData;
-  const [filter, setFilter] = useState('ALL');
+  const [filter, setFilter]         = useState('ALL');
   const [dispatchLog, setDispatchLog] = useState([]);
 
-  const filtered = filter === 'ALL' ? alerts : alerts.filter(a => a.level === filter);
-
-  const criticalAlerts  = alerts.filter(a => a.level === 'CRITICAL');
-  const highAlerts      = alerts.filter(a => a.level === 'HIGH');
-  const activeAlerts    = alerts.filter(a => !a.acknowledged);
+  const filtered       = filter === 'ALL' ? alerts : alerts.filter(a => a.level === filter);
+  const criticalAlerts = alerts.filter(a => a.level === 'CRITICAL');
+  const highAlerts     = alerts.filter(a => a.level === 'HIGH');
+  const activeAlerts   = alerts.filter(a => !a.acknowledged);
 
   async function handleDispatch(alert) {
     const result = await dispatchAction({ alertId: alert.id, action: alert.action }).catch(() => null);
-    if (result) {
-      setDispatchLog(prev => [result, ...prev.slice(0, 9)]);
-    }
+    if (result) setDispatchLog(prev => [result, ...prev.slice(0, 9)]);
   }
 
-  const levels = ['ALL', 'CRITICAL', 'HIGH', 'MODERATE'];
+  const levels      = ['ALL', 'CRITICAL', 'HIGH', 'MODERATE'];
   const levelColors = { ALL: '#3b82f6', CRITICAL: '#dc2626', HIGH: '#ea580c', MODERATE: '#d97706' };
   const levelCounts = { ALL: alerts.length, CRITICAL: criticalAlerts.length, HIGH: highAlerts.length, MODERATE: alerts.filter(a => a.level === 'MODERATE').length };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 14, height: 'calc(100vh - 88px)' }}>
+    <div className="tg-alerts-page" style={{ display: 'flex', flexDirection: 'column', gap: 14, height: 'calc(100vh - 88px)' }}>
 
       {/* Page header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+      <div className="tg-alerts-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
         <div>
           <h2 style={{ fontSize: 18, fontWeight: 700, color: '#f1f5f9', margin: 0 }}>🚨 Alert Center</h2>
-          <p style={{ fontSize: 12, color: '#64748b', margin: 0 }}>Real-time escalation & dispatch — North Eastern India</p>
+          <p style={{ fontSize: 12, color: '#64748b', margin: 0 }}>Real-time escalation &amp; dispatch — North Eastern India</p>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           {activeAlerts.length > 0 && (
@@ -46,39 +43,40 @@ export default function AlertsPage({ liveData }) {
         </div>
       </div>
 
-      {/* Alert Escalation Funnel — visual */}
+      {/* Escalation funnel */}
       <div style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 8, padding: '14px 18px', flexShrink: 0 }}>
         <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', marginBottom: 10, letterSpacing: '0.06em' }}>
           ALERT ESCALATION PROTOCOL
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          <FunnelStep icon="🌐" label="AI Risk" sublabel={`${alerts.length} regions`} color="#3b82f6" />
+        <div className="tg-funnel">
+          <FunnelStep icon="🌐" label="AI Risk"          sublabel={`${alerts.length} regions`} color="#3b82f6" />
           <Arrow />
-          <FunnelStep icon="🔍" label="Threshold Check" sublabel=">70 = Critical" color="#7c3aed" />
+          <FunnelStep icon="🔍" label="Threshold Check"  sublabel=">70 = Critical"             color="#7c3aed" />
           <Arrow />
-          <FunnelStep icon="⚠️" label="Warning Generated" sublabel="Multilingual" color="#d97706" />
+          <FunnelStep icon="⚠️" label="Warning Generated" sublabel="Multilingual"              color="#d97706" />
           <Arrow />
           <div style={{
             background: 'rgba(220,38,38,0.2)', border: '2px solid #dc2626',
             borderRadius: 8, padding: '8px 14px', textAlign: 'center', minWidth: 130,
           }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: '#fca5a5', marginBottom: 2 }}>📨 SMS & DASHBOARD</div>
+            <div style={{ fontSize: 10, fontWeight: 700, color: '#fca5a5', marginBottom: 2 }}>📨 SMS &amp; DASHBOARD</div>
             <div style={{ fontSize: 9, color: '#94a3b8' }}>Dispatched to local authorities</div>
             <div style={{ fontSize: 18, fontWeight: 900, color: '#dc2626', marginTop: 2 }}>{criticalAlerts.length}</div>
           </div>
         </div>
       </div>
 
-      {/* Filter tabs + alert list */}
-      <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 280px', gap: 12, minHeight: 0 }}>
+      {/* Filter tabs + alert list grid */}
+      <div className="tg-alerts-grid">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, minHeight: 0 }}>
           {/* Filter tabs */}
-          <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+          <div className="tg-filter-tabs">
             {levels.map(l => (
               <button key={l} onClick={() => setFilter(l)} style={{
                 background: filter === l ? `${levelColors[l]}25` : '#1e293b',
                 border: `1px solid ${filter === l ? levelColors[l] : '#334155'}`,
-                borderRadius: 6, padding: '5px 12px', color: filter === l ? levelColors[l] : '#64748b',
+                borderRadius: 6, padding: '5px 12px',
+                color: filter === l ? levelColors[l] : '#64748b',
                 fontSize: 12, fontWeight: filter === l ? 700 : 400, cursor: 'pointer',
               }}>
                 {l} ({levelCounts[l]})
@@ -86,7 +84,7 @@ export default function AlertsPage({ liveData }) {
             ))}
           </div>
 
-          {/* Alerts */}
+          {/* Alerts list */}
           <div style={{ flex: 1, overflow: 'auto' }}>
             <AlertPanel alerts={filtered} onRefresh={refresh} />
           </div>
@@ -95,6 +93,7 @@ export default function AlertsPage({ liveData }) {
         {/* Dispatch log */}
         <div style={{ background: '#111827', border: '1px solid #1e293b', borderRadius: 8, padding: 12, overflow: 'auto' }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', marginBottom: 10 }}>DISPATCH LOG</div>
+
           {/* Quick dispatch buttons */}
           <div style={{ marginBottom: 12 }}>
             <div style={{ fontSize: 10, color: '#64748b', marginBottom: 6 }}>QUICK DISPATCH:</div>

@@ -3,35 +3,38 @@ import { submitReport } from '../utils/api';
 import { formatTime } from '../utils/helpers';
 
 const REPORT_TYPES = [
-  { value: 'SLOPE_MOVEMENT', label: '⛰️ Slope Movement', color: '#dc2626' },
-  { value: 'ROAD_BLOCKAGE', label: '🚧 Road Blockage', color: '#ea580c' },
-  { value: 'FLOOD_WATER', label: '🌊 Flood / Rising Water', color: '#3b82f6' },
-  { value: 'LANDSLIDE', label: '🪨 Active Landslide', color: '#dc2626' },
-  { value: 'CRACK_OBSERVED', label: '🔍 Ground Cracks', color: '#d97706' },
-  { value: 'TREE_FALL', label: '🌲 Tree/Debris Fall', color: '#65a30d' },
-  { value: 'BRIDGE_DAMAGE', label: '🌉 Bridge Damage', color: '#7c3aed' },
+  { value: 'SLOPE_MOVEMENT', label: '⛰️ Slope Movement',    color: '#dc2626' },
+  { value: 'ROAD_BLOCKAGE',  label: '🚧 Road Blockage',     color: '#ea580c' },
+  { value: 'FLOOD_WATER',    label: '🌊 Flood / Rising Water', color: '#3b82f6' },
+  { value: 'LANDSLIDE',      label: '🪨 Active Landslide',   color: '#dc2626' },
+  { value: 'CRACK_OBSERVED', label: '🔍 Ground Cracks',      color: '#d97706' },
+  { value: 'TREE_FALL',      label: '🌲 Tree/Debris Fall',   color: '#65a30d' },
+  { value: 'BRIDGE_DAMAGE',  label: '🌉 Bridge Damage',      color: '#7c3aed' },
 ];
 
 const SEVERITIES = [
   { value: 'CRITICAL', label: 'CRITICAL', color: '#dc2626' },
-  { value: 'HIGH', label: 'HIGH', color: '#ea580c' },
+  { value: 'HIGH',     label: 'HIGH',     color: '#ea580c' },
   { value: 'MODERATE', label: 'MODERATE', color: '#d97706' },
-  { value: 'LOW', label: 'LOW', color: '#65a30d' },
+  { value: 'LOW',      label: 'LOW',      color: '#65a30d' },
 ];
 
 const OFFLINE_STORAGE_KEY = 'terraguard_offline_reports';
 
 export default function FieldReporter({ liveData }) {
   const { reports, refresh } = liveData;
-  const [form, setForm] = useState({ type: 'SLOPE_MOVEMENT', severity: 'HIGH', lat: '', lon: '', description: '', region: '', citizenId: '' });
-  const [submitting, setSubmitting] = useState(false);
-  const [submitted, setSubmitted]   = useState(false);
-  const [offline, setOffline]       = useState(false);
+  const [form, setForm] = useState({
+    type: 'SLOPE_MOVEMENT', severity: 'HIGH',
+    lat: '', lon: '', description: '', region: '', citizenId: '',
+  });
+  const [submitting, setSubmitting]   = useState(false);
+  const [submitted,  setSubmitted]    = useState(false);
+  const [offline,    setOffline]      = useState(false);
   const [offlineCount, setOfflineCount] = useState(
     () => JSON.parse(localStorage.getItem(OFFLINE_STORAGE_KEY) || '[]').length
   );
-  const [syncing, setSyncing] = useState(false);
-  const [syncResult, setSyncResult] = useState(null);
+  const [syncing,    setSyncing]      = useState(false);
+  const [syncResult, setSyncResult]   = useState(null);
 
   function handleChange(e) {
     setForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
@@ -55,7 +58,6 @@ export default function FieldReporter({ liveData }) {
     setSubmitting(true);
 
     if (offline) {
-      // Offline-first: save locally
       const existing = JSON.parse(localStorage.getItem(OFFLINE_STORAGE_KEY) || '[]');
       const newReport = { ...form, offlineId: `OFF-${Date.now()}`, savedAt: new Date().toISOString() };
       existing.unshift(newReport);
@@ -73,7 +75,6 @@ export default function FieldReporter({ liveData }) {
       setForm(prev => ({ ...prev, lat: '', lon: '', description: '' }));
       setTimeout(() => { setSubmitted(false); refresh(); }, 2500);
     } catch {
-      // Auto-save offline if API fails
       const existing = JSON.parse(localStorage.getItem(OFFLINE_STORAGE_KEY) || '[]');
       existing.unshift({ ...form, offlineId: `OFF-${Date.now()}`, savedAt: new Date().toISOString() });
       localStorage.setItem(OFFLINE_STORAGE_KEY, JSON.stringify(existing));
@@ -84,12 +85,12 @@ export default function FieldReporter({ liveData }) {
 
   async function syncOffline() {
     setSyncing(true);
-    const offline = JSON.parse(localStorage.getItem(OFFLINE_STORAGE_KEY) || '[]');
-    if (!offline.length) { setSyncing(false); return; }
+    const offlineData = JSON.parse(localStorage.getItem(OFFLINE_STORAGE_KEY) || '[]');
+    if (!offlineData.length) { setSyncing(false); return; }
     try {
       const resp = await fetch('/api/reports/sync', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ offlineReports: offline }),
+        body: JSON.stringify({ offlineReports: offlineData }),
       });
       const data = await resp.json();
       localStorage.setItem(OFFLINE_STORAGE_KEY, '[]');
@@ -104,10 +105,10 @@ export default function FieldReporter({ liveData }) {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 14, height: 'calc(100vh - 88px)' }}>
+    <div className="tg-reporter-page" style={{ display: 'flex', flexDirection: 'column', gap: 14, height: 'calc(100vh - 88px)' }}>
 
       {/* Page header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+      <div className="tg-reporter-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
         <div>
           <h2 style={{ fontSize: 18, fontWeight: 700, color: '#f1f5f9', margin: 0 }}>📱 Field Reporter</h2>
           <p style={{ fontSize: 12, color: '#64748b', margin: 0 }}>Geo-tagged incident reporting — Offline-First Protocol</p>
@@ -121,7 +122,8 @@ export default function FieldReporter({ liveData }) {
           <button onClick={syncOffline} disabled={syncing || offlineCount === 0} style={{
             background: offlineCount > 0 ? '#1d4ed8' : '#1e293b',
             border: `1px solid ${offlineCount > 0 ? '#3b82f6' : '#334155'}`,
-            borderRadius: 6, padding: '6px 14px', color: offlineCount > 0 ? '#fff' : '#64748b',
+            borderRadius: 6, padding: '6px 14px',
+            color: offlineCount > 0 ? '#fff' : '#64748b',
             fontSize: 12, fontWeight: 600, cursor: offlineCount > 0 ? 'pointer' : 'default',
           }}>
             {syncing ? '⟳ Syncing…' : '⇑ Sync Offline Reports'}
@@ -155,7 +157,7 @@ export default function FieldReporter({ liveData }) {
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <span style={{ fontSize: 9, color: '#ea580c' }}>NO →</span>
-              <FlowBox label="Encrypt & save locally" color="#d97706" />
+              <FlowBox label="Encrypt &amp; save locally" color="#d97706" />
               <Arrow />
               <FlowBox label="Background ping" color="#d97706" />
               <Arrow />
@@ -165,7 +167,8 @@ export default function FieldReporter({ liveData }) {
         </div>
       </div>
 
-      <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '380px 1fr', gap: 12, minHeight: 0 }}>
+      {/* Form + report list grid */}
+      <div className="tg-reporter-grid">
 
         {/* Submission form */}
         <div style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 8, padding: 16, overflow: 'auto' }}>
@@ -186,10 +189,10 @@ export default function FieldReporter({ liveData }) {
               </select>
             </div>
 
-            {/* Severity */}
+            {/* Severity — 2-col grid on mobile via tg-severity-btns */}
             <div>
               <Label>Severity</Label>
-              <div style={{ display: 'flex', gap: 6 }}>
+              <div className="tg-severity-btns" style={{ display: 'flex', gap: 6 }}>
                 {SEVERITIES.map(s => (
                   <button type="button" key={s.value} onClick={() => setForm(p => ({ ...p, severity: s.value }))} style={{
                     flex: 1, padding: '5px 0', borderRadius: 5, fontSize: 11, fontWeight: 600,
@@ -205,10 +208,11 @@ export default function FieldReporter({ liveData }) {
             <div>
               <Label>GPS Location</Label>
               <div style={{ display: 'flex', gap: 6 }}>
-                <input name="lat" value={form.lat} onChange={handleChange} placeholder="Latitude" style={{ ...inputStyle, flex: 1 }} />
+                <input name="lat" value={form.lat} onChange={handleChange} placeholder="Latitude"  style={{ ...inputStyle, flex: 1 }} />
                 <input name="lon" value={form.lon} onChange={handleChange} placeholder="Longitude" style={{ ...inputStyle, flex: 1 }} />
                 <button type="button" onClick={useMyLocation} style={{
-                  background: '#1d4ed8', border: 'none', borderRadius: 6, padding: '0 10px', color: '#fff', fontSize: 12, cursor: 'pointer',
+                  background: '#1d4ed8', border: 'none', borderRadius: 6,
+                  padding: '0 10px', color: '#fff', fontSize: 12, cursor: 'pointer',
                 }} title="Use my location">📍</button>
               </div>
             </div>
@@ -255,9 +259,7 @@ export default function FieldReporter({ liveData }) {
             RECENT FIELD REPORTS ({reports.length})
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {reports.map(r => (
-              <ReportCard key={r.id} report={r} />
-            ))}
+            {reports.map(r => <ReportCard key={r.id} report={r} />)}
           </div>
         </div>
       </div>
@@ -267,7 +269,7 @@ export default function FieldReporter({ liveData }) {
 
 function ReportCard({ report: r }) {
   const colors = { CRITICAL: '#dc2626', HIGH: '#ea580c', MODERATE: '#d97706', LOW: '#65a30d' };
-  const color = colors[r.severity] || '#64748b';
+  const color  = colors[r.severity] || '#64748b';
 
   return (
     <div style={{
@@ -289,7 +291,8 @@ function ReportCard({ report: r }) {
         </div>
       </div>
       <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 4 }}>{r.description}</div>
-      <div style={{ display: 'flex', gap: 12, fontSize: 10, color: '#475569' }}>
+      {/* tg-report-meta wraps on narrow mobile screens */}
+      <div className="tg-report-meta" style={{ display: 'flex', gap: 12, fontSize: 10, color: '#475569' }}>
         <span>📍 {r.region}</span>
         <span>🌐 {r.lat?.toFixed(4)}, {r.lon?.toFixed(4)}</span>
         <span>🕐 {formatTime(r.timestamp)}</span>
@@ -314,7 +317,6 @@ function FlowBox({ label, color = '#1e3a5f', diamond = false }) {
       background: `${color}30`, border: `1px solid ${color}80`,
       borderRadius: diamond ? '4px' : 6, padding: '5px 10px',
       fontSize: 10, color: '#94a3b8', textAlign: 'center', whiteSpace: 'nowrap',
-      transform: diamond ? 'rotate(0deg)' : 'none',
     }}>{label}</div>
   );
 }
