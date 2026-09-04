@@ -104,7 +104,7 @@ function disasterPopup(ev) {
 
 // ── Bounding boxes ─────────────────────────────────────────────────────────────
 const WORLD_BOUNDS  = L.latLngBounds([-60, -180], [75, 180]);
-const INDIA_BOUNDS  = L.latLngBounds([6, 68], [37.1, 98]);
+const INDIA_BOUNDS  = L.latLngBounds([7, 68], [36, 97]);
 
 // ────────────────────────────────────────────────────────────────────────────
 // RiskMap
