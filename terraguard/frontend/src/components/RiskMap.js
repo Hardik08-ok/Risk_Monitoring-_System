@@ -7,6 +7,7 @@ import { getRiskColor } from '../utils/helpers';
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({ iconRetinaUrl: '', iconUrl: '', shadowUrl: '' });
 
+// ── Risk marker ───────────────────────────────────────────────────────────────
 function createRiskIcon(level, score) {
   const color = getRiskColor(level);
   const size  = level === 'CRITICAL' ? 36 : level === 'HIGH' ? 30 : 24;
@@ -29,12 +30,109 @@ function createRiskIcon(level, score) {
   return L.divIcon({ html, className: '', iconSize: [size, size], iconAnchor: [size / 2, size / 2] });
 }
 
-export default function RiskMap({ riskData, reports, onRegionClick }) {
-  const mapRef    = useRef(null);
-  const layerRef  = useRef(null);
-  const reportRef = useRef(null);
+// ── Disaster marker ───────────────────────────────────────────────────────────
+const DISASTER_META = {
+  EARTHQUAKE:   { emoji: '🌍', color: '#f59e0b', label: 'Earthquake' },
+  FLOOD:        { emoji: '🌊', color: '#3b82f6', label: 'Flood' },
+  WILDFIRE:     { emoji: '🔥', color: '#ef4444', label: 'Wildfire' },
+  SEVERE_STORM: { emoji: '🌪️', color: '#8b5cf6', label: 'Severe Storm' },
+  VOLCANO:      { emoji: '🌋', color: '#f97316', label: 'Volcano' },
+  LANDSLIDE:    { emoji: '⛰️', color: '#84cc16', label: 'Landslide' },
+  OTHER:        { emoji: '⚠️', color: '#6b7280', label: 'Event' },
+};
+
+const SEVERITY_COLORS = {
+  CRITICAL: '#dc2626',
+  HIGH:     '#ea580c',
+  MODERATE: '#d97706',
+  LOW:      '#65a30d',
+};
+
+function createDisasterIcon(type, severity) {
+  const meta  = DISASTER_META[type] ?? DISASTER_META.OTHER;
+  const color = SEVERITY_COLORS[severity] ?? meta.color;
+  const size  = severity === 'CRITICAL' ? 34 : severity === 'HIGH' ? 28 : 22;
+  const pulse = severity === 'CRITICAL' || severity === 'HIGH';
+  const html = `
+    <div style="position:relative;width:${size}px;height:${size}px;">
+      ${pulse ? `<div style="
+        position:absolute;inset:0;border-radius:4px;
+        border:2px solid ${color};
+        animation:pulse-ring 1.6s ease-out infinite;
+      "></div>` : ''}
+      <div style="
+        width:${size}px;height:${size}px;border-radius:4px;
+        background:${color}dd;border:1.5px solid rgba(255,255,255,0.55);
+        display:flex;align-items:center;justify-content:center;
+        font-size:${Math.round(size * 0.52)}px;
+        box-shadow:0 0 10px ${color}70;
+      ">${meta.emoji}</div>
+    </div>`;
+  return L.divIcon({ html, className: '', iconSize: [size, size], iconAnchor: [size / 2, size / 2] });
+}
+
+function disasterPopup(ev) {
+  const meta  = DISASTER_META[ev.type] ?? DISASTER_META.OTHER;
+  const color = SEVERITY_COLORS[ev.severity] ?? meta.color;
+  const dateStr = ev.date
+    ? new Date(ev.date).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })
+    : '—';
+  const magStr = ev.magnitude != null ? ev.magnitude.toFixed(1) : '—';
+  const link   = ev.link
+    ? `<a href="${ev.link}" target="_blank" rel="noreferrer"
+         style="color:#60a5fa;font-size:10px;display:block;margin-top:6px;word-break:break-all;">
+         View source ↗
+       </a>`
+    : '';
+  return `
+    <div style="min-width:210px;font-family:system-ui;background:#1e293b;color:#f1f5f9;border-radius:8px;overflow:hidden;">
+      <div style="background:${color};padding:7px 12px;font-weight:700;font-size:12px;display:flex;align-items:center;gap:6px;">
+        <span style="font-size:16px;">${meta.emoji}</span>
+        <span>${meta.label} — ${ev.severity}</span>
+      </div>
+      <div style="padding:10px 12px;font-size:12px;">
+        <div style="font-weight:600;color:#f1f5f9;margin-bottom:5px;line-height:1.35;">${ev.title}</div>
+        <div style="color:#94a3b8;font-size:10px;margin-bottom:4px;">Source: ${ev.source}</div>
+        ${ev.magnitude != null
+          ? `<div style="color:#fbbf24;font-size:11px;margin-bottom:2px;">Magnitude: <b>${magStr}</b></div>`
+          : ''}
+        <div style="color:#94a3b8;font-size:10px;">🕐 ${dateStr}</div>
+        ${link}
+      </div>
+    </div>`;
+}
+
+// ── Bounding boxes ─────────────────────────────────────────────────────────────
+const WORLD_BOUNDS  = L.latLngBounds([-60, -180], [75, 180]);
+const INDIA_BOUNDS  = L.latLngBounds([6, 68], [37.1, 98]);
+
+// ────────────────────────────────────────────────────────────────────────────
+// RiskMap
+//
+// Props (all optional except in risk mode):
+//   mapMode        'risk' (default) | 'disasters'
+//   riskData       array  – regional risk objects
+//   reports        array  – field reports
+//   onRegionClick  fn
+//   disasterEvents array  – normalised disaster events
+//   disasterScope  'global' | 'india'
+// ────────────────────────────────────────────────────────────────────────────
+export default function RiskMap({
+  mapMode = 'risk',
+  riskData,
+  reports,
+  onRegionClick,
+  disasterEvents,
+  disasterScope = 'global',
+}) {
+  const mapRef      = useRef(null);
+  const layerRef    = useRef(null);   // risk markers
+  const reportRef   = useRef(null);   // field report markers
+  const disasterRef = useRef(null);   // disaster markers
+  const nerBoxRef   = useRef(null);   // NER boundary rectangle
   const initialized = useRef(false);
 
+  // ── One-time map initialization ─────────────────────────────────────────────
   useEffect(() => {
     if (initialized.current) return;
     initialized.current = true;
@@ -46,9 +144,7 @@ export default function RiskMap({ riskData, reports, onRegionClick }) {
     });
 
     const apiKey = process.env.REACT_APP_MAPTILER_KEY;
-
     if (apiKey) {
-      // MapTiler basemap – Streets Dark style, all labels forced to English
       import('@maptiler/leaflet-maptilersdk').then(({ MaptilerLayer, MapStyle, Language }) => {
         new MaptilerLayer({
           apiKey,
@@ -57,28 +153,79 @@ export default function RiskMap({ riskData, reports, onRegionClick }) {
         }).addTo(mapRef.current);
       });
     } else {
-      // Fallback: OpenStreetMap when the API key is not configured
-      console.warn(
-        '[TerraGuard] REACT_APP_MAPTILER_KEY is not set. ' +
-        'Falling back to OpenStreetMap tiles.'
-      );
+      console.warn('[TerraGuard] REACT_APP_MAPTILER_KEY is not set. Falling back to OpenStreetMap tiles.');
       L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution:
-          '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
         maxZoom: 18,
       }).addTo(mapRef.current);
     }
 
-    // NER boundary box (approximate)
-    L.rectangle([[21, 88], [29.5, 97.5]], {
+    // NER boundary box (shown only in risk mode)
+    nerBoxRef.current = L.rectangle([[21, 88], [29.5, 97.5]], {
       color: '#3b82f6', weight: 1.5, fill: false, dashArray: '6,4', opacity: 0.5,
     }).addTo(mapRef.current);
 
     layerRef.current  = L.layerGroup().addTo(mapRef.current);
     reportRef.current = L.layerGroup().addTo(mapRef.current);
+    disasterRef.current = L.layerGroup().addTo(mapRef.current);
   }, []);
 
-  // Update risk markers
+  // ── Toggle layers and fit bounds when mapMode/scope changes ─────────────────
+  useEffect(() => {
+    if (!mapRef.current) return;
+    const isRisk      = mapMode === 'risk';
+    const isDisasters = mapMode === 'disasters';
+
+    // Show/hide the NER boundary box
+    if (nerBoxRef.current) {
+      if (isRisk) {
+        if (!mapRef.current.hasLayer(nerBoxRef.current)) {
+          nerBoxRef.current.addTo(mapRef.current);
+        }
+      } else {
+        if (mapRef.current.hasLayer(nerBoxRef.current)) {
+          mapRef.current.removeLayer(nerBoxRef.current);
+        }
+      }
+    }
+
+    // Show/hide risk & report layers
+    if (layerRef.current) {
+      if (isRisk) {
+        if (!mapRef.current.hasLayer(layerRef.current)) layerRef.current.addTo(mapRef.current);
+      } else {
+        if (mapRef.current.hasLayer(layerRef.current))  mapRef.current.removeLayer(layerRef.current);
+      }
+    }
+    if (reportRef.current) {
+      if (isRisk) {
+        if (!mapRef.current.hasLayer(reportRef.current)) reportRef.current.addTo(mapRef.current);
+      } else {
+        if (mapRef.current.hasLayer(reportRef.current))  mapRef.current.removeLayer(reportRef.current);
+      }
+    }
+
+    // Show/hide disaster layer
+    if (disasterRef.current) {
+      if (isDisasters) {
+        if (!mapRef.current.hasLayer(disasterRef.current)) disasterRef.current.addTo(mapRef.current);
+      } else {
+        if (mapRef.current.hasLayer(disasterRef.current))  mapRef.current.removeLayer(disasterRef.current);
+      }
+    }
+
+    // Fit bounds to the active mode
+    if (isRisk) {
+      mapRef.current.setView([25.5, 92.5], 6);
+    } else if (isDisasters) {
+      mapRef.current.fitBounds(
+        disasterScope === 'india' ? INDIA_BOUNDS : WORLD_BOUNDS,
+        { padding: [20, 20] }
+      );
+    }
+  }, [mapMode, disasterScope]);
+
+  // ── Risk markers ─────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!layerRef.current || !riskData?.length) return;
     layerRef.current.clearLayers();
@@ -110,7 +257,7 @@ export default function RiskMap({ riskData, reports, onRegionClick }) {
     });
   }, [riskData, onRegionClick]);
 
-  // Update field report markers
+  // ── Field report markers ─────────────────────────────────────────────────────
   useEffect(() => {
     if (!reportRef.current || !reports?.length) return;
     reportRef.current.clearLayers();
@@ -131,6 +278,20 @@ export default function RiskMap({ riskData, reports, onRegionClick }) {
         .addTo(reportRef.current);
     });
   }, [reports]);
+
+  // ── Disaster markers ─────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!disasterRef.current) return;
+    disasterRef.current.clearLayers();
+    if (!disasterEvents?.length) return;
+
+    disasterEvents.forEach(ev => {
+      if (typeof ev.lat !== 'number' || typeof ev.lon !== 'number') return;
+      L.marker([ev.lat, ev.lon], { icon: createDisasterIcon(ev.type, ev.severity) })
+        .bindPopup(disasterPopup(ev), { maxWidth: 260 })
+        .addTo(disasterRef.current);
+    });
+  }, [disasterEvents]);
 
   return (
     <div
