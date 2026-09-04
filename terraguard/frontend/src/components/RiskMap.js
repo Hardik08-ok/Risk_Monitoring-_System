@@ -125,6 +125,7 @@ export default function RiskMap({
   disasterEvents,
   disasterScope = 'global',
 }) {
+  const containerRef = useRef(null);
   const mapRef      = useRef(null);
   const layerRef    = useRef(null);   // risk markers
   const reportRef   = useRef(null);   // field report markers
@@ -137,7 +138,10 @@ export default function RiskMap({
     if (initialized.current) return;
     initialized.current = true;
 
-    mapRef.current = L.map('terraguard-map', {
+    // A ref gives each mounted page its own map container. This prevents
+    // Leaflet's "Map container is already initialized" error after switching
+    // between the dashboard and Live Disasters pages.
+    mapRef.current = L.map(containerRef.current, {
       center: [25.5, 92.5],
       zoom: 6,
       zoomControl: true,
@@ -145,12 +149,14 @@ export default function RiskMap({
 
     const apiKey = process.env.REACT_APP_MAPTILER_KEY;
     if (apiKey) {
+      const map = mapRef.current;
       import('@maptiler/leaflet-maptilersdk').then(({ MaptilerLayer, MapStyle, Language }) => {
+        if (mapRef.current !== map) return;
         new MaptilerLayer({
           apiKey,
           style: MapStyle.STREETS.DARK,
           language: Language.ENGLISH,
-        }).addTo(mapRef.current);
+        }).addTo(map);
       });
     } else {
       console.warn('[TerraGuard] REACT_APP_MAPTILER_KEY is not set. Falling back to OpenStreetMap tiles.');
@@ -168,6 +174,16 @@ export default function RiskMap({
     layerRef.current  = L.layerGroup().addTo(mapRef.current);
     reportRef.current = L.layerGroup().addTo(mapRef.current);
     disasterRef.current = L.layerGroup().addTo(mapRef.current);
+
+    return () => {
+      mapRef.current?.remove();
+      mapRef.current = null;
+      layerRef.current = null;
+      reportRef.current = null;
+      disasterRef.current = null;
+      nerBoxRef.current = null;
+      initialized.current = false;
+    };
   }, []);
 
   // ── Toggle layers and fit bounds when mapMode/scope changes ─────────────────
@@ -295,7 +311,7 @@ export default function RiskMap({
 
   return (
     <div
-      id="terraguard-map"
+      ref={containerRef}
       style={{ width: '100%', height: '100%', borderRadius: 8, overflow: 'hidden' }}
     />
   );
