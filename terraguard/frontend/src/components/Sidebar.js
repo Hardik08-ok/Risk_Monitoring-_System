@@ -1,10 +1,11 @@
 import React from 'react';
 
 const NAV = [
-  { id: 'dashboard', icon: '🗺️', label: 'Live Dashboard' },
-  { id: 'alerts',    icon: '🚨', label: 'Alert Center' },
-  { id: 'reporter',  icon: '📱', label: 'Field Reporter' },
-  { id: 'analytics', icon: '📊', label: 'Analytics' },
+  { id: 'dashboard',  icon: '🗺️',  label: 'Live Dashboard' },
+  { id: 'disasters',  icon: '🌋',  label: 'Live Disasters' },
+  { id: 'alerts',     icon: '🚨',  label: 'Alert Center' },
+  { id: 'reporter',   icon: '📱',  label: 'Field Reporter' },
+  { id: 'analytics',  icon: '📊',  label: 'Analytics' },
 ];
 
 export default function Sidebar({ activePage, setPage, liveData }) {
