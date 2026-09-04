@@ -23,7 +23,9 @@ app.use('/api/regions', require('./routes/regions'));
 //   { id, title, type, source, lat, lon, magnitude, severity, date, link }
 //
 // Supported types: EARTHQUAKE | FLOOD | WILDFIRE | SEVERE_STORM | VOLCANO | LANDSLIDE
-// When scope=india, results are filtered to India's geographic bounding box.
+// When scope=india, results are filtered to an India-focused boundary. A simple
+// rectangle would incorrectly include events in Afghanistan, Nepal, Bangladesh,
+// Bhutan, and Myanmar.
 
 (function mountDisastersRoute() {
   // ── Constants ───────────────────────────────────────────────────────────────
@@ -31,10 +33,37 @@ app.use('/api/regions', require('./routes/regions'));
   const EONET_URL = 'https://eonet.gsfc.nasa.gov/api/v3/events?status=open&limit=200';
   const FETCH_TIMEOUT_MS = 10000;
 
-  const INDIA = { minLat: 6.0, maxLat: 37.1, minLon: 68.0, maxLon: 98.0 };
-  const inIndia = (lat, lon) =>
-    lat >= INDIA.minLat && lat <= INDIA.maxLat &&
-    lon >= INDIA.minLon && lon <= INDIA.maxLon;
+  // Low-resolution mainland and north-east India outlines. They deliberately
+  // exclude neighbouring countries while keeping the filter dependency-free.
+  // Coordinates are [longitude, latitude].
+  const INDIA_AREAS = [
+    [
+      [68.0, 23.5], [70.0, 25.0], [71.0, 28.5], [73.5, 31.5],
+      [74.0, 35.8], [77.5, 35.5], [79.5, 34.0], [80.0, 32.0],
+      [83.0, 30.5], [87.0, 28.0], [88.0, 26.0], [88.0, 23.0],
+      [86.5, 21.0], [85.0, 19.0], [83.0, 16.5], [80.5, 13.0],
+      [78.0, 8.0], [74.0, 8.5], [72.0, 12.5], [70.5, 18.5],
+    ],
+    [
+      [88.0, 21.5], [91.0, 22.0], [92.0, 24.0], [94.0, 24.5],
+      [96.5, 27.5], [96.0, 29.0], [93.5, 28.5], [91.5, 27.5],
+      [89.0, 26.0],
+    ],
+  ];
+
+  function pointInPolygon(lon, lat, polygon) {
+    let inside = false;
+    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+      const [xi, yi] = polygon[i];
+      const [xj, yj] = polygon[j];
+      const crosses = ((yi > lat) !== (yj > lat)) &&
+        (lon < ((xj - xi) * (lat - yi)) / (yj - yi) + xi);
+      if (crosses) inside = !inside;
+    }
+    return inside;
+  }
+
+  const inIndia = (lat, lon) => INDIA_AREAS.some(area => pointInPolygon(lon, lat, area));
 
   const EONET_TYPE_MAP = {
     'Wildfires':     'WILDFIRE',
