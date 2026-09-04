@@ -1,11 +1,11 @@
 import React from 'react';
 import { formatTime } from '../utils/helpers';
 
-export default function Header({ liveData }) {
+export default function Header({ liveData, onMenuClick }) {
   const { criticalCount, highCount, lastUpdate, loading, refresh } = liveData;
 
   return (
-    <header style={{
+    <header className="tg-header" style={{
       background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
       borderBottom: '1px solid #1e3a5f',
       padding: '0 20px',
@@ -16,26 +16,36 @@ export default function Header({ liveData }) {
       flexShrink: 0,
       zIndex: 100,
     }}>
-      {/* Logo + Title */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+      {/* Left: hamburger (mobile only) + Logo + Title */}
+      <div className="tg-header-left">
+        {/* Hamburger — visible only on mobile via CSS */}
+        <button
+          className="tg-hamburger"
+          onClick={onMenuClick}
+          aria-label="Open navigation menu"
+        >
+          ☰
+        </button>
+
         <div style={{
           width: 36, height: 36, borderRadius: 8,
           background: 'linear-gradient(135deg, #1d4ed8, #7c3aed)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 18, fontWeight: 700, color: '#fff',
+          fontSize: 18, fontWeight: 700, color: '#fff', flexShrink: 0,
         }}>🛡️</div>
+
         <div>
           <div style={{ fontWeight: 700, fontSize: 15, color: '#f1f5f9', letterSpacing: '0.02em' }}>
             TerraGuard <span style={{ color: '#60a5fa' }}>AI</span>
           </div>
-          <div style={{ fontSize: 10, color: '#64748b', letterSpacing: '0.08em' }}>
+          <div className="tg-header-subtitle" style={{ fontSize: 10, color: '#64748b', letterSpacing: '0.08em' }}>
             DISASTER MANAGEMENT PLATFORM — NER
           </div>
         </div>
       </div>
 
-      {/* Status Badges */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+      {/* Right: status badges + refresh */}
+      <div className="tg-header-right">
         {criticalCount > 0 && (
           <div className="animate-pulse" style={{
             background: 'rgba(220,38,38,0.2)', border: '1px solid #dc2626',
@@ -67,8 +77,8 @@ export default function Header({ liveData }) {
           borderRadius: 6, padding: '4px 10px', color: '#60a5fa', fontSize: 12,
         }}>↻ Refresh</button>
 
-        {/* Team Badge */}
-        <div style={{
+        {/* Team Badge — hidden on mobile */}
+        <div className="tg-header-teambadge" style={{
           background: 'rgba(124,58,237,0.15)', border: '1px solid #7c3aed',
           borderRadius: 6, padding: '3px 10px', fontSize: 11, color: '#a78bfa',
         }}>MDN-8492 | TerraGuard AI</div>

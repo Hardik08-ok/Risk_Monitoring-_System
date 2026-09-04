@@ -8,30 +8,50 @@ const NAV = [
   { id: 'analytics',  icon: '📊',  label: 'Analytics' },
 ];
 
-export default function Sidebar({ activePage, setPage, liveData }) {
+export default function Sidebar({ activePage, setPage, liveData, isOpen, onClose }) {
   const { criticalCount, highCount, reports } = liveData;
 
   const badges = {
-    alerts: criticalCount + highCount || null,
+    alerts:   criticalCount + highCount || null,
     reporter: reports.filter(r => !r.verified).length || null,
   };
 
   return (
-    <aside style={{
-      width: 200, flexShrink: 0,
-      background: '#111827',
-      borderRight: '1px solid #1e293b',
-      padding: '12px 0',
-      display: 'flex', flexDirection: 'column', gap: 2,
-      overflow: 'hidden',
-    }}>
+    <aside
+      className={`tg-sidebar${isOpen ? ' open' : ''}`}
+      style={{
+        width: 200, flexShrink: 0,
+        background: '#111827',
+        borderRight: '1px solid #1e293b',
+        padding: '12px 0',
+        display: 'flex', flexDirection: 'column', gap: 2,
+        overflow: 'hidden',
+      }}
+    >
+      {/* Close button — only visible on mobile (via CSS the button is always
+          rendered but .tg-sidebar-close is display:none on desktop) */}
+      <button
+        className="tg-sidebar-close"
+        onClick={onClose}
+        aria-label="Close navigation"
+        style={{
+          display: 'none', /* overridden to flex by media query */
+          alignItems: 'center', justifyContent: 'flex-end',
+          background: 'transparent', border: 'none',
+          color: '#64748b', fontSize: 20, padding: '4px 12px 8px',
+          cursor: 'pointer',
+        }}
+      >
+        ✕
+      </button>
+
       {/* System Status */}
       <div style={{ padding: '8px 16px 12px', borderBottom: '1px solid #1e293b', marginBottom: 8 }}>
         <div style={{ fontSize: 10, color: '#64748b', letterSpacing: '0.08em', marginBottom: 6 }}>SYSTEM STATUS</div>
-        <StatusRow label="AI Engine" status="ONLINE" color="#22c55e" />
+        <StatusRow label="AI Engine"   status="ONLINE" color="#22c55e" />
         <StatusRow label="Sensor Grid" status="ACTIVE" color="#22c55e" />
-        <StatusRow label="GIS Layer" status="LIVE" color="#3b82f6" />
-        <StatusRow label="SMS Gateway" status="READY" color="#a78bfa" />
+        <StatusRow label="GIS Layer"   status="LIVE"   color="#3b82f6" />
+        <StatusRow label="SMS Gateway" status="READY"  color="#a78bfa" />
       </div>
 
       {/* Navigation */}
@@ -60,7 +80,7 @@ export default function Sidebar({ activePage, setPage, liveData }) {
       {/* Bottom: Pipeline status */}
       <div style={{ marginTop: 'auto', padding: '12px 16px', borderTop: '1px solid #1e293b' }}>
         <div style={{ fontSize: 10, color: '#64748b', marginBottom: 8 }}>COMMAND PIPELINE</div>
-        {['Collecting', 'Processing', 'Analyzing', 'Alerting'].map((step, i) => (
+        {['Collecting', 'Processing', 'Analyzing', 'Alerting'].map(step => (
           <div key={step} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
             <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e', flexShrink: 0 }} />
             <span style={{ fontSize: 10, color: '#64748b' }}>{step}</span>
