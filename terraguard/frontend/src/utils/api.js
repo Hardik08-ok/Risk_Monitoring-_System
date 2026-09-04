@@ -19,6 +19,6 @@ export const calculateRisk   = (params)    => api.post('/risk/calculate', params
 // Live Disasters – returns full response object (not just .data) so callers can
 // inspect sourceErrors, fetchedAt, scope, count alongside the events array.
 export const fetchDisasters = (scope = 'global') =>
-  api.get(`/disasters?scope=${scope}`).then(r => r.data);
+  api.get(`/disasters?scope=${scope}`).then(r => r.data); 
 
 export default api;
